@@ -8,6 +8,6 @@ flowchart LR
   C --> E{both passed<br/>and event = push?}
   D --> E
   E -- yes --> F[Docker build<br/>server/Dockerfile]
-  F --> G[(GHCR<br/>symbiconnect-server:latest + :sha)]
+  F --> G[(GHCR<br/>devopsca2-server:latest + :sha)]
   G --> H[Deploy: Kubernetes<br/>Task 3]
 ```

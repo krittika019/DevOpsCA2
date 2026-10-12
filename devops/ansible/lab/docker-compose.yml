@@ -1,0 +1,15 @@
+# Local lab: a control node (Ansible) and a target server (the runtime host to configure).
+services:
+  control:
+    build: ./control
+    volumes:
+      - ..:/ansible
+    environment:
+      ANSIBLE_CONFIG: /ansible/ansible.cfg
+    depends_on:
+      - appserver
+  appserver:
+    build: ./target
+    hostname: appserver
+    ports:
+      - "8080:80"

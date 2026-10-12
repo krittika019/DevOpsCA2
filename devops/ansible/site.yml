@@ -1,0 +1,90 @@
+---
+- name: Configure the SymbiConnect runtime environment
+  hosts: appservers
+  become: true
+
+  tasks:
+    # ---- Packages -------------------------------------------------------
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        name: "{{ packages }}"
+        state: present
+
+    # ---- Users and groups ----------------------------------------------
+    - name: Create application group
+      ansible.builtin.group:
+        name: "{{ app_group }}"
+        state: present
+
+    - name: Create application user
+      ansible.builtin.user:
+        name: "{{ app_user }}"
+        group: "{{ app_group }}"
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    # ---- Files and directories -----------------------------------------
+    - name: Create application directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0755"
+      loop:
+        - "{{ app_dir }}"
+        - "{{ app_dir }}/uploads"
+        - "{{ app_dir }}/uploads/profiles"
+        - "{{ app_dir }}/uploads/files"
+
+    - name: Render server .env
+      ansible.builtin.template:
+        src: env.j2
+        dest: "{{ app_dir }}/.env"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0600"
+
+    - name: Configure nginx reverse proxy
+      ansible.builtin.template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/sites-available/{{ app_name }}
+        mode: "0644"
+      notify: Restart nginx
+
+    - name: Enable the site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/{{ app_name }}
+        dest: /etc/nginx/sites-enabled/{{ app_name }}
+        state: link
+      notify: Restart nginx
+
+    - name: Disable the default nginx site
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Restart nginx
+
+    # ---- Services ------------------------------------------------------
+    - name: Validate nginx configuration
+      ansible.builtin.command: nginx -t
+      changed_when: false
+
+    - name: Ensure nginx is running
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        use: service    # the lab container has no systemd
+
+  handlers:
+    - name: Restart nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+        use: service

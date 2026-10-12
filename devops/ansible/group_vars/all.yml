@@ -1,0 +1,19 @@
+app_name: symbiconnect
+app_user: deploy
+app_group: symbiconnect
+app_dir: /opt/symbiconnect
+app_port: 3000
+
+packages:
+  - git
+  - curl
+  - rsync
+  - htop
+  - nginx
+
+# Values rendered into the server .env (see server/.env.example)
+app_env:
+  PORT: "{{ app_port }}"
+  ORIGIN: "http://localhost:5173"
+  JWT_KEY: "change-me"          # lab placeholder; use ansible-vault for real secrets
+  DATABSE_URL: "mongodb://localhost:27017/symbiconnect"

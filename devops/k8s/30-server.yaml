@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: symbiconnect-server
+  namespace: symbiconnect
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels: { app: symbiconnect-server }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0      # old pods keep serving until new ones are Ready
+  template:
+    metadata:
+      labels: { app: symbiconnect-server }
+    spec:
+      containers:
+        - name: server
+          image: ghcr.io/krittika019/devopsca2-server:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef: { name: symbiconnect-config }
+            - secretRef: { name: symbiconnect-secret }
+          readinessProbe:
+            tcpSocket: { port: 3000 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket: { port: 3000 }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 300m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: symbiconnect-server
+  namespace: symbiconnect
+spec:
+  type: NodePort
+  selector: { app: symbiconnect-server }
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30000
